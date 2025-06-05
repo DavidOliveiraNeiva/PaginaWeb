@@ -4,29 +4,44 @@ import os
 from modelo import prever_gasto
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'chave-super-secreta')  # obrigatório para sessões
 DATA_FILE = 'data.csv'
 PASSWORD = 'David'  # Altere isso
 
-def check_auth(password):
-    return password == PASSWORD
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        senha = request.form.get('senha')
+        if senha == PASSWORD:
+            session['autenticado'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', erro='Senha incorreta')
+    return render_template('login.html')
 
-# Antes de qualquer requisição, verifica se a senha está presente e correta
-@app.before_request
-def restrict_access():
-    # Permite acesso ao favicon sem senha
-    if request.endpoint == 'static':
-        return
-    password = request.args.get('senha')
-    if not check_auth(password):
-        return Response('Acesso negado. Adicione ?senha=David na URL.', 401)
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+def login_requerido(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('autenticado'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
+@login_requerido
 def index():
     df = pd.read_csv(DATA_FILE)
     previsao = prever_gasto(df)
     return render_template('index.html', dados=df.to_dict(orient='records'), previsao=previsao)
 
 @app.route('/adicionar', methods=['POST'])
+@login_requerido
 def adicionar():
     novo = {
         "data": request.form['data'],
@@ -34,6 +49,13 @@ def adicionar():
         "valor": float(request.form['valor'])
     }
     df = pd.read_csv(DATA_FILE)
+    df = pd.concat([df, pd.DataFrame([novo])])
+    df.to_csv(DATA_FILE, index=False)
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
     df = pd.concat([df, pd.DataFrame([novo])])
     df.to_csv(DATA_FILE, index=False)
     return redirect('/')
