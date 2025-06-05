@@ -5,6 +5,20 @@ from modelo import prever_gasto
 
 app = Flask(__name__)
 DATA_FILE = 'data.csv'
+PASSWORD = 'David'  # Altere isso
+
+def check_auth(password):
+    return password == PASSWORD
+
+# Antes de qualquer requisição, verifica se a senha está presente e correta
+@app.before_request
+def restrict_access():
+    # Permite acesso ao favicon sem senha
+    if request.endpoint == 'static':
+        return
+    password = request.args.get('senha')
+    if not check_auth(password):
+        return Response('Acesso negado. Adicione ?senha=David na URL.', 401)
 
 @app.route('/')
 def index():
