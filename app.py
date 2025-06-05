@@ -1,13 +1,15 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, session, url_for
 import pandas as pd
 import os
 from modelo import prever_gasto
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'chave-super-secreta')  # obrigatório para sessões
-DATA_FILE = 'data.csv'
-PASSWORD = 'David'  # Altere isso
+app.secret_key = os.environ.get('SECRET_KEY', 'chave-super-secreta')
 
+DATA_FILE = 'data.csv'
+PASSWORD = 'David'  # senha definida
+
+# Tela de login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -24,6 +26,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# Decorador que protege as rotas
 def login_requerido(f):
     from functools import wraps
     @wraps(f)
@@ -56,7 +59,3 @@ def adicionar():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-    df = pd.concat([df, pd.DataFrame([novo])])
-    df.to_csv(DATA_FILE, index=False)
-    return redirect('/')
-
